@@ -1,4 +1,5 @@
-const API_BASE = "https://receipt-tracker-backend-production.up.railway.app"import { useState, useEffect, useCallback, useRef } from "react";
+const API_BASE = "https://receipt-tracker-backend-production.up.railway.app";
+import { useState, useEffect, useCallback, useRef } from "react";
 import _ from "lodash";
 
 // ─── Schedule C Categories ───
