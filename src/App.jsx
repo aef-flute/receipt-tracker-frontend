@@ -30,7 +30,7 @@ const SCHEDULE_C_CATEGORIES = [
 const categoryMap = Object.fromEntries(SCHEDULE_C_CATEGORIES.map(c => [c.id, c]));
 
 // ─── API Configuration ───
-const API_BASE = "http://localhost:8000";
+const API_BASE = "https://receipt-tracker-backend-production.up.railway.app";
 
 // ─── Utility ───
 const fmt = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
