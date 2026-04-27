@@ -30,7 +30,7 @@ const SCHEDULE_C_CATEGORIES = [
 const categoryMap = Object.fromEntries(SCHEDULE_C_CATEGORIES.map(c => [c.id, c]));
 
 // ─── API Configuration ───
-const API_BASE = "https://receipt-tracker-backend-production.up.railway.app";
+const API_BASE = "http://localhost:8000";
 
 // ─── Utility ───
 const fmt = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -307,8 +307,11 @@ export default function ScheduleCTracker() {
     const dominated = new Set();
     for (let i = 0; i < allExpenses.length; i++) {
       if (dominated.has(allExpenses[i].id)) continue;
+      // Skip expenses already reviewed as not-duplicate
+      if (allExpenses[i].duplicate_reviewed) continue;
       for (let j = i + 1; j < allExpenses.length; j++) {
         if (dominated.has(allExpenses[j].id)) continue;
+        if (allExpenses[j].duplicate_reviewed) continue;
         const a = allExpenses[i];
         const b = allExpenses[j];
         // Must be the same amount
@@ -332,17 +335,27 @@ export default function ScheduleCTracker() {
     return dominated;
   };
 
-  const [dismissedDups, setDismissedDups] = useState(new Set());
   const duplicateIds = detectDuplicates(expenses);
-  const activeDuplicateIds = new Set([...duplicateIds].filter(id => !dismissedDups.has(id)));
 
-  // Clean expenses = non-duplicates + dismissed (approved) duplicates
-  const cleanExpenses = expenses.filter(e => !activeDuplicateIds.has(e.id));
-  const duplicateExpenses = expenses.filter(e => activeDuplicateIds.has(e.id));
+  // Clean expenses = non-duplicates
+  const cleanExpenses = expenses.filter(e => !duplicateIds.has(e.id));
+  const duplicateExpenses = expenses.filter(e => duplicateIds.has(e.id));
 
-  const approveDuplicate = (id) => {
-    setDismissedDups(prev => new Set([...prev, id]));
-    showToast("Expense approved — added to log");
+  const approveDuplicate = async (id) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/expenses/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ duplicate_reviewed: true }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setExpenses(prev => prev.map(e => e.id === id ? updated : e));
+        showToast("Expense approved — added to log");
+      }
+    } catch (e) {
+      console.error("Failed to approve duplicate:", e);
+    }
   };
 
   const deleteDuplicate = async (id) => {
@@ -355,7 +368,7 @@ export default function ScheduleCTracker() {
     return expenses.find(e =>
       e.id !== dup.id &&
       e.amount === dup.amount &&
-      !activeDuplicateIds.has(e.id) &&
+      !duplicateIds.has(e.id) &&
       ((e.vendor || "").toLowerCase().includes((dup.vendor || "").toLowerCase()) ||
        (dup.vendor || "").toLowerCase().includes((e.vendor || "").toLowerCase()) ||
        Math.abs(new Date(e.date) - new Date(dup.date)) / (1000 * 60 * 60 * 24) <= 3)
