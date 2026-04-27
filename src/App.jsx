@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback, useRef } from "react";
 import _ from "lodash";
 
 // ─── Schedule C Categories ───
